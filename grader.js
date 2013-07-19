@@ -24,7 +24,9 @@ References:
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
+var rest = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
+var URL_DEFAULT = "http://afternoon-headland-1689.herokuapp.com/";
 var CHECKSFILE_DEFAULT = "checks.json";
 
 var assertFileExists = function(infile) {
@@ -40,8 +42,24 @@ var cheerioHtmlFile = function(htmlfile) {
     return cheerio.load(fs.readFileSync(htmlfile));
 };
 
+var checkUrl = function(url, checksfile) {
+  var webPage = url.toString();
+  rest.get(webPage).on('complete', function(result) {
+    if (result instanceof Error) {
+      console.log("%s does not exist. Exiting.", webPage);
+      process.exit(1); 
+    } else {
+      var outfile = 'tmp.html';
+      fs.writeFileSync(outfile, result);
+      var checkJson = checkHtmlFile(outfile, checksfile);
+      var outJson = JSON.stringify(checkJson, null, 4);
+      console.log(outJson);
+    }
+  });
+};
+
 var loadChecks = function(checksfile) {
-    return JSON.parse(fs.readFileSync(checksfile));
+  return JSON.parse(fs.readFileSync(checksfile));
 };
 
 var checkHtmlFile = function(htmlfile, checksfile) {
@@ -62,13 +80,19 @@ var clone = function(fn) {
 };
 
 if(require.main == module) {
-    program
-        .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .parse(process.argv);
+  program
+    .version('0.0.1')
+    .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
+    .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists))
+    .option('-u, --url <url>', 'Url of the page')
+    .parse(process.argv);
+  if (program.file != null) {
     var checkJson = checkHtmlFile(program.file, program.checks);
     var outJson = JSON.stringify(checkJson, null, 4);
     console.log(outJson);
+  } else if (program.url != null) {
+    checkUrl(program.url, program.checks);
+  }
 } else {
-    exports.checkHtmlFile = checkHtmlFile;
+  exports.checkHtmlFile = checkHtmlFile;
 }
