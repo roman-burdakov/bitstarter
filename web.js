@@ -10,6 +10,7 @@ fs.readFile(inputfile, function (err, data) {
 var express = require('express');
 
 var app = express.createServer(express.logger());
+app.use(express.static(__dirname + '/resources'));
 
 app.get('/', function(request, response) {
   response.send(indexBuffer.toString());
